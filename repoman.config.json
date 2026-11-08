@@ -1,0 +1,143 @@
+{
+  "version": "1.0.0",
+  "agentName": "repoman-agent",
+  "activeRepository": "local-repo",
+  "repositories": [
+    {
+      "name": "local-repo",
+      "path": ".",
+      "defaultBranch": "main",
+      "remote": "origin"
+    },
+    {
+      "name": "services/auth-service",
+      "path": "./services/auth-service",
+      "defaultBranch": "main",
+      "remote": "origin"
+    },
+    {
+      "name": "packages/ui-components",
+      "path": "./packages/ui-components",
+      "defaultBranch": "main",
+      "remote": "origin"
+    }
+  ],
+  "safeguards": {
+    "allowForcePush": false,
+    "blockedFilePatterns": [
+      ".env*",
+      "*.pem",
+      "id_rsa*",
+      "*.key",
+      "credentials.json",
+      "secrets/**",
+      ".git/**"
+    ],
+    "blockedCommands": [
+      "rm -rf /",
+      "rm -rf ~",
+      "git push --force",
+      "git push -f",
+      "git reset --hard origin",
+      "dropdb",
+      "mkfs",
+      "dd if="
+    ],
+    "requireCleanWorkingTree": true,
+    "maxFilesPerCommit": 25,
+    "maxLinesChangedPerJob": 1500,
+    "allowedRepositoryPaths": [
+      ".",
+      "./services/*",
+      "./packages/*",
+      "./src/*"
+    ],
+    "requireConfirmationForDestructive": true
+  },
+  "jobs": [
+    {
+      "id": "lint-and-autofix",
+      "name": "Lint & Automated Formatting",
+      "description": "Scans workspace files, executes linter checks, and applies automated style fixes.",
+      "category": "lint",
+      "schedule": "0 2 * * *",
+      "steps": [
+        {
+          "name": "Run Type Check",
+          "command": "npm run lint",
+          "continueOnError": false,
+          "rollbackOnFailure": true
+        },
+        {
+          "name": "Verify Syntax Tree",
+          "command": "npx esbuild --version",
+          "continueOnError": false
+        }
+      ],
+      "autoCommit": true,
+      "commitMessageTemplate": "chore(lint): automated linter and code formatting pass [skip ci]",
+      "createBranch": true,
+      "branchPrefix": "repoman/lint-pass"
+    },
+    {
+      "id": "dependency-audit",
+      "name": "Dependency Security Audit",
+      "description": "Performs vulnerability scan on packages and verifies lockfile integrity.",
+      "category": "security",
+      "schedule": "0 8 * * 1",
+      "steps": [
+        {
+          "name": "Audit Production Dependencies",
+          "command": "npm audit --audit-level=high",
+          "continueOnError": true
+        },
+        {
+          "name": "Check Outdated Packages",
+          "command": "npm outdated || true",
+          "continueOnError": true
+        }
+      ],
+      "autoCommit": false
+    },
+    {
+      "id": "sync-upstream",
+      "name": "Upstream Remote Sync",
+      "description": "Fetches remote references, verifies divergence, and safely merges main branch updates.",
+      "category": "sync",
+      "steps": [
+        {
+          "name": "Fetch Origin References",
+          "command": "git fetch origin main",
+          "continueOnError": false
+        },
+        {
+          "name": "Check Merge Status",
+          "command": "git status -s",
+          "continueOnError": false
+        }
+      ],
+      "autoCommit": false
+    },
+    {
+      "id": "changelog-patch",
+      "name": "Automated Changelog Update",
+      "description": "Collects recent Git commits and appends formatted release entries to CHANGELOG.md.",
+      "category": "custom",
+      "steps": [
+        {
+          "name": "Inspect Git Log",
+          "command": "git log -n 5 --oneline",
+          "continueOnError": false
+        }
+      ],
+      "autoCommit": true,
+      "commitMessageTemplate": "docs(changelog): update release notes via repoman-agent",
+      "createBranch": false
+    }
+  ],
+  "logging": {
+    "logFilePath": "./repoman-audit.log",
+    "level": "INFO",
+    "consoleOutput": true
+  }
+}

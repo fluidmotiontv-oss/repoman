@@ -1,0 +1,6 @@
+{
+  "name": "repoman-agent",
+  "description": "Autonomous local repository and Git workflow automation agent with safety guardrails, file rollback snapshots, job scheduler, and audit logging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
